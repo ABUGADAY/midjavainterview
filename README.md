@@ -1,31 +1,18 @@
 # 小Java面试总纲
 
 - [jvm]()
-
 - [mysql]()
-
 - [redis缓存]()
-
 - [Java]()
-
 - [缓存]()
-
 - [算法]()
-
 - [juc源码]()
-
+- [多线程](https://github.com/ABUGADAY/midjavainterview/blob/master/%E5%A4%9A%E7%BA%BF%E7%A8%8B.md)
 - [并发]()
-
 - [一致性]()
-
 - [mq]()
-
 - [服务治理]()
-
 - [netty]()
-
 - [zk]()
-
 - [etcd]()
-
 - [分布式服务]()
