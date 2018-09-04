@@ -3,7 +3,7 @@
 - [jvm](https://github.com/ABUGADAY/midjavainterview/blob/master/docs/JVM.md)
 - [mysql]()未完成
 - [redis缓存]()未完成
-- [Java]()未完成
+- [Java基础](https://yq.aliyun.com/articles/622609#java)外链
 - [缓存]()未完成
 - [算法]()未完成
 - [juc源码]()未完成
