@@ -1,4 +1,4 @@
-# 小Java面试总纲
+# 中级小Java必知必会
 
 - [jvm](https://github.com/ABUGADAY/midjavainterview/blob/master/JVM.md)
 - [mysql]()未完成
