@@ -64,7 +64,7 @@ static class ThreadLocalMap {
     }
 ```
 看下面的图示，实现代表强引用，虚线代表弱引用。每个 thread 中都存在一个 map ， map 的类型时上文提到的 ThreadLocal.ThreadLocalMap ，该 map 中的 key 为一个 ThreadLocal 实例。 这个 Map 的确使用了弱引用， 不过弱引用只是针对 key ， 每个 key 都弱引用指向 ThreadLocal 对象。 一旦把 threadlocal 实例置为 null 以后，那么将没有任何强引用指向 ThreadLocal 对象，因此 ThreadLocal 对象将会被 Java GC 回收。但是，与之关联的 value 却不能回收，因为存在一条从 current thread 连接过来的强引用。 只有当前 thread 结束以后， current thread 就不会存在栈中，强引用断开，Current Thread、Map 及 value 将全部被 Java GC 回收。
-[](https://github.com/ABUGADAY/midjavainterview/tree/master/img/juc1.jpg)
+[img1](https://github.com/ABUGADAY/midjavainterview/tree/master/img/juc1.jpg)
 
 所以，得出一个结论就是：只要这个线程对象被 Java GC 回收，就不会出现内存泄露。但是如果只把 ThreadLocal 引用指向 null 而线程对象依然存在，那么此时 Value 是不会被回收的，这就发生了我们认为的内存泄露。比如，在使用线程池的时候，线程结束是不会销毁的而是会再次使用的，这种情形下就可能出现 ThreadLocal 内存泄露。
 Java 为了最小化减少内存泄露的可能性和影响，在 ThreadLocal 进行 get、set 操作时会清除线程 Map 里所有 key 为 null 的 value。所以最怕的情况就是，ThreadLocal 对象设 null 了，开始发生 “内存泄露”，然后使用线程池，线程结束后被放回线程池中而不销毁，那么如果这个线程一直不被使用或者分配使用了又不再调用 get/set 方法，那么这个期间就会发生真正的内存泄露。因此，最好的做法是：在不使用该 ThreadLocal 对象时，及时调用该对象的 remove 方法去移除 ThreadLocal.ThreadLocalMap 中的对应 Entry。
