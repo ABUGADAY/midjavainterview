@@ -1,6 +1,6 @@
 # 小Java面试总纲
 
-- [jvm](https://github.com/ABUGADAY/midjavainterview/blob/master/JVM.md)未完成
+- [jvm](https://github.com/ABUGADAY/midjavainterview/blob/master/JVM.md)
 - [mysql]()未完成
 - [redis缓存]()未完成
 - [Java]()未完成
