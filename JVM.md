@@ -132,13 +132,13 @@ Tracing: 通过一个叫GC Roots 的对象作为起点，从这些节点开始�
 ## 引起类加载操作的五个行为
 - 遇到 new 、getstatic 、 putstatic 或 invokestatic 这四条字节码指令
 - 反射调用的时候，如果类没有进行过初始化，则需要先触发其初始化
-- 子类初始化的时候，如果其弗雷还没初始化，则需先触发其父类的初始化
+- 子类初始化的时候，如果其父类还没初始化，则需先触发其父类的初始化
 - 虚拟机执行主类的时候（有 main(String[] args)）
 - JDK7 动态语言支持
 
 ## Java 对象创建时机
 - 使用 new 关键字的时候
 - 使用 Class类的 newInstance方法（反射机制）
-- 是哟个 Constructor 类的 newInstance 方法（反射机制）
+- 使用 Constructor 类的 newInstance 方法（反射机制）
 - 使用 Clone 方法创建对象
 - 使用（反）序列化机制创建对象
