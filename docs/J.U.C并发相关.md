@@ -18,6 +18,52 @@ synchronized (lock) {
 
 Wait-notify 机制是在获取对象锁的前提下不同线程间的通信机制。在 Java 中，任意对象都可以当作锁来使用，由于锁对象的任意性，所以这些通信方法需要被定义在 Object 类里。
 
+## 4.为什么 wait() notify() 和 notifyAll() 必须在同步方法或者同步 块中被调用？
+wait/notify 机制是依赖于 Java 中 Synchornize 同步机制的，其目的在于确保等待线程从 Wait() 返回时能沟感知通知线程对共享变量所作出的修改。如果不再同步范围内使用，就会抛出 **java.lang.IllegalMonitorStateException** 的异常。
+
+## 5.并发三准则
+- 异常不会导致死锁现象：当线程出现异常且没有捕获处理时，JVM 会字的喔咕释放当前线程所占用的锁，因此不会由于异常导致出现死锁现象，同时还会释放 CPU；
+- 锁的是对象而非引用；
+- 有 wait 必有 notify；
+
+## 6.如何确保线程安全？
+在 Java 中可以有很多方法来保证线程安全，诸如：
+- 通过加锁（Lock/Synchronized）保证对临界资源的同步互斥访问；
+- 使用 volatile 关键字，轻量级同步机制，但不保证原子性；
+- 使用不变类 和 线程安全类（原子类，并发容器，同步容器等）。
+
+## 7. volatile 关键字在Java中有什么作用
+volatile 的特殊规则保证了新值能立即同步到主内存，以及每次使用前立即从主内存刷新，即保证了内存的可见性，除此之外还能禁止指令重排序。此外，synchronized 关键字也可以保证内存可见性。   
+指令重排序问题在并发环境下会导致线程安全问题， volatile 关键字通过禁止指令重排序来避免这一问题。而对于 synchronized 关键字，其所控制范围内的程序在执行时独占的，指令重排序问题不会对其产生任何影响，因此无论如何，其都可以保证最终的正确性。
+
+## 8. ThreadLocal 及其引发的内存泄露
+ThreadLocal 是 Java 中的一种线程绑定机制，可以为每一个使用该变量的线程都提供一个变量值的副本，并且每一个线程都可以独立地改变自己的副本，而不会与其它线程的副本发生冲突。
+每个线程内部有一个 ThreadLocal.ThreadLocalMap 类型的成语阿变量 threadLocals，这个 threadLocals 存储了与该线程相关的所有 ThreadLocal 变量以及其对应的值，也就是说， ThreadLocal 变量及其对应的值集iushi该Map 中的一个 Entry ，更直白地， threadLocals 中每个 Entry 的 key 是 ThreadLocal 变量本身， 而 Value 是该 ThreadLocal 变量对应的值。
+### 1.ThreadLocal 可能引起的内存泄露
+下面时 ThreadLocalMap 的部分源码，我们可以看出 ThreadLocalMap 里面对 Key 的引用是弱引用。那么，就存在这样的情况： 当释放调对 threadlocal 对象的强引用后， map 里面的 value 没有被回收，但却永远不会访问到了，因此 ThreadLocal 存在着内存泄露问题。
+```java
+static class ThreadLocalMap {
+        /**
+         * The entries in this hash map extend WeakReference, using
+         * its main ref field as the key (which is always a
+         * ThreadLocal object).  Note that null keys (i.e. entry.get()
+         * == null) mean that the key is no longer referenced, so the
+         * entry can be expunged from table.  Such entries are referred to
+         * as "stale entries" in the code that follows.
+         */
+        static class Entry extends WeakReference<ThreadLocal> {
+            /** The value associated with this ThreadLocal. */
+            Object value;
+
+            Entry(ThreadLocal k, Object v) {
+                super(k);
+                value = v;
+            }
+        }
+        ...
+    }
+```
+
 
 > 引用声明：
 >　原创作者：书呆子Rico 
