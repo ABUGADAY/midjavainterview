@@ -63,7 +63,8 @@ static class ThreadLocalMap {
         ...
     }
 ```
-
+看下面的图示，实现代表强引用，虚线代表弱引用。每个 thread 中都存在一个 map ， map 的类型时上文提到的 ThreadLocal.ThreadLocalMap ，该 map 中的 key 为一个 ThreadLocal 实例。 这个 Map 的确使用了弱引用， 不过弱引用只是针对 key ， 每个 key 都弱引用指向 ThreadLocal 对象。 一旦把 threadlocal 实例置为 null 以后，那么将没有任何强引用指向 ThreadLocal 对象，因此 ThreadLocal 对象将会被 Java GC 回收。但是，与之关联的 value 却不能回收，因为存在一条从 current thread 连接过来的强引用。 只有当前 thread 结束以后， current thread 就不会存在栈中，强引用断开，Current Thread、Map 及 value 将全部被 Java GC 回收。
+[](../img/shimg.jpg)
 
 > 引用声明：
 >　原创作者：书呆子Rico 
