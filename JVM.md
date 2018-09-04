@@ -38,7 +38,7 @@
 
 - Java 程序员不用担心内存管理，因为垃圾收集器会自动进行管理
 
-- 可以嗲用下面的方法之一： System.gc() 或 Runtime.getRuntime().gc() ，但 JVM 可以屏蔽掉显示的垃圾回收调用
+- 可以调用下面的方法之一： System.gc() 或 Runtime.getRuntime().gc() ，但 JVM 可以屏蔽掉显示的垃圾回收调用
 
 ## GC标记对象的死活
 
