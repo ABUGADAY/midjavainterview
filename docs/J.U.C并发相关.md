@@ -293,6 +293,110 @@ Synchronized 是 Java 的关键字，是 Java 的内置特性，在 JVM 层面�
 
   ![img8](https://raw.githubusercontent.com/ABUGADAY/midjavainterview/master/img/juc8.png)
 
+##  15.Condition
+
+COndition 可以用来实现线程的分组通信与协作。以生产者/消费者问题为例，
+
+- wait/notiy/notifyAll：在队列为空时，通知所有线程；队列满时，通知所有线程，防止生产者通知生产者，消费者通知消费者的情形产生。
+
+- await/signal/signalAll:将线程分为消费者线程和生产者线程两组：在队列为空时，通知生产者线程生产；在队列满时，通知消费者线程消费
+
+  ![img9](https://raw.githubusercontent.com/ABUGADAY/midjavainterview/master/img/juc9.png)
+
+
+
+##  16. 什么时阻塞队列？如何使用阻塞队列来实现生产者-消费者模型？
+
+java.util.concurrent.BlockingQueue 的特性是：当队列是空的时，从队列中获取或删除元素的操作将会被阻塞，或者当队列是满的时，往队列李添加元素的操作会被阻塞。特别地，阻塞队列不接受空值，当你尝试向队列中添加空值的时候，它会抛出 NullPointException。另外，阻塞队列的实现都是线程安全的，所有的查询方法都是原子的并且使用了内部锁或者其他形式的并发控制。
+
+BlockingQueue 接口时 java collections 框架的一部分，它主要用于实现生产者 - 消费者问题。特别地，SynchronousQueue 是一个没有容量的阻塞队列，每个插入操作必须等待另一个线程的对应移除操作，反之亦然。 CachedThreadPool 使用 SynchronousQueue 把主线程提交的任务传递给空闲线程执行。
+
+
+
+## 17. 同步容器（强一致性）
+
+同步容器值的是 Vector、Stack、HashTable 及 Collections 类中提供的静态工厂方法创建的类。其中，Vector 实现了 List 接口 ，Vector 实际上就是一个数组，和 ArrayList 类似，但是 Vector中的方法都是 synchronized 方法，即进行了同步措施；Stack 也是一个同步容器，它的方法也用 sychronized 进行了同步，它实际上是继承于 Vector 类；HashTable 实现了 Map 接口，它和 HashMap 很相似，但是 HashTable 进行了同步处理，而 HashMap 没有。
+
+Collections 类是一个工具提供类，注意，它和 Collection 不同， Collection 是一个顶层的接口。在Collection 类中提供了大量的方法。比如对集合或者容器进行排序、查找等操作。最重要的是，在它里面提供了几个静态工厂方法来创建同步容器类，如下图所示：
+
+![img10](https://raw.githubusercontent.com/ABUGADAY/midjavainterview/master/img/juc10.png)
+
+
+
+## 18. 什么是 CopyOnWrite 容器（弱一致性）？
+
+CopyOnWrite 容器即写时复制的容器，适用于读写操作远多与修改操作的并发场景中。通俗的理解是当我们往一个容器添加元素的时候，不直接往当前容器添加，而是先将当前容器进行 Copy ，复制出一个新的容器，然后新的容器里添加元素，添加完元素之后再将原容器的引用指向新的容器。这样做的好处是我们可以对CopyOnWrite 容器进行并发的读，而不需要加锁，因为当前容器不会添加任何元素。所以  CopyOnWrite 容器也是一种读写分离的思想，读和写不同的容器。
+
+从 JDK1.5 开始 Java 并发包里提供了两个使用 CopyOnWrite 机制实现的并发容器，他们是 CopyOnWriteArrayList 和 CopyOnWriteArraySet。CopyOnWrie容器主要存在两个弱点：
+
+- 容器对象的复制需要一定的开销，如果对象占用内存过大，可能造成频繁的YoungGC 和 FUll GC；
+- CopyOnWriteArrayList 不能保证数据实时一致性，只能保证最终一致性。
+
+
+
+## 19. ConcurrentHashMap（弱一致性）
+
+ConcurrentHashMap 的弱一致性主要是为了提升效率，也是一致性与效率之间的一种权衡。要成为强一致性，就得到处使用锁，甚至全局锁，这就与 HashTable 和同步的 HashMap 一样了。ConcurrentHashMap 的弱一致性主要体现在以下几个方面：
+
+- get 操作是弱一致的： get 操作只能保证一定能看到已完成的 put操作；
+
+  ![img11](https://raw.githubusercontent.com/ABUGADAY/midjavainterview/master/img/juc11.png)
+
+- clear 操作是弱一致的：在清除完一个 segments 之后，在清理下一个 segments 的时候，已经清理的 segments 可能又被加入了数据，因此 clear 返回的时候， ConcurrentHashMap 中是可能存在数据的。
+
+  ```java
+  public void clear(){
+      for(int i = 0 l i < segments.length; i++){
+          segments[i].clear();
+      }
+  }
+  ```
+- ConcurrentHashMap 中的迭代操作是弱一致的（未遍历的内容发生变化可能会被反映出来）：在遍历过程中，如果已经遍历的数组上的内容发生变化了，迭代器不会抛出 ConcurrentModificationException 异常，则有可能反映到迭代过程中。
+
+
+
+## 20. happens-before
+
+happens-before 指定了两个操作间的执行顺序：如果 A happens before B，那么 Java 内存模型将向程序员保证 —— A 的执行顺序排在 B 之前，并且 A 操作的结果将对 B 可见，其具体包括如下 8 条规则：
+
+- 程序顺序规则： 单线程内，按照程序代码顺序，书写在前面的操作先行发生于书写在后面的操作；
+- 管程锁定规则：一个 unlock 操作先行发生于对同一个锁的 lock 操作；
+- volatile 变量规则： 对一个 Volatile 变量的写操作先行发生与对这个变量的读操作；
+- 线程启动规则： Thread 对象的 start() 方法先行发生于此线程的其他动作；
+- 线程中断规则： 对线程 interrupt() 方法的调用先行发生于被中断线程的代码检测到中断事件的发生；
+- 线程终止规则：线程中所有的操作都先行发生于线程的终止检测，我们可以通过 Thread.join() 方法结束、Thread.isAlive()的返回值手段检测到线程已经终止执行；
+- 对象终结规则：一个对象的初始化完成先行发生于它的 finalize() 方法的开始；
+- 传递规则： 如果操作 A 先行发生于操作 B ，而操作 B 又先行发生于操作 C ，则可以得出操作 A 先行发生于操作 C；
+
+
+
+## 21. 锁优化技术
+
+锁优化技术的目的在于线程之间更高校的共享数据，解决竞争问题，更好提高程序执行效率。
+
+- 自旋锁（上下文切换代价大）：互斥锁->阻塞->释放 CPU，线程上下文切换代价较大 + 共享变量的锁定时间较短 == 让线程通过自旋等一会儿，自旋锁
+- 锁粗化（一个大锁优于若干小锁）：一系列连续操作对同一对象的反复频繁加锁/界所会导致不必要的性能损耗，建议粗化锁  
+  一般而言，同步范围越小越好，这样便于其他线程尽快拿到锁，但仍存在特例。
+- 偏向锁（有锁但当前情形不存在竞争）：消除数据在无法竞争情况下的同步原语，提高带有同步但无竞争的程序性能。
+- 锁消除（有锁但不存在竞争，锁多余）：JVM 编译优化，将不存在数据竞争的锁消除
+
+
+
+##  22. 主线程等待子线程运行完毕再运行的方法
+
+1. Join
+
+   Thread 提供了一个让线程等待另一个线程完成的方法 —— Join() 方法。当在某个程序执行流程中调用其他线程的 join() 方法时，调用线程将被阻塞，直到被 join() 方法加入的 join 线程执行完毕为止，再继续运行。 join() 方法的实现原理时不停检查 join 线程是否存活，如果 join 线程存活则让当前线程永远等待。知道 join 线程完成后，线程的 this.notifyAll() 方法会被调用。
+
+2. CountDownLatch
+
+   Countdown Latch 允许一个或多个线程等待其他线程完成操作。 CountDownLatch 的构造函数接收一个 int 类型的参数作为计数器，如果你想等待 N 个点完成，这李就传入 N。当我们调用 countDown方法时，N就会 -1，await 方法会阻塞当前线程，知道 N 变成 0。这里说的 N 个点，也可以时1个线程里的 N 个执行步骤。
+
+   ![img12](https://raw.githubusercontent.com/ABUGADAY/midjavainterview/master/img/juc12.png)
+
+3. Sleep
+
+   用 sleep 方法，让主线程睡眠一段时间，当然这个睡眠时间时主观的时间，是我们自己定的，这个方法不推荐，但是毕竟是解决办法。
 
 
 
