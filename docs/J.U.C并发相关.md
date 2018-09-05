@@ -257,7 +257,7 @@ CAS 虽然很高效的解决原子操作，但是 CAS 仍然存在三大问题�
 
 同步器的设计是基于 **模板方法模式** 的，也就是说，使用者需要继承同步器并重写制定的方法，随后将同步器组合在自定义同步组件的实现中，并调用同步器提供的模板方法，而这些模板方法将会调用使用者重写的方法。
 
-![img7](https://raw.githubusercontent.com/ABUGADAY/midjavainterview/master/img/juc7.jpg)
+![img7](https://raw.githubusercontent.com/ABUGADAY/midjavainterview/master/img/juc7.png)
 
 AQS 维护了一个 volatile int state （代表共享资源）和一个 FIFO 线程等待队列（多线程争用资源被阻塞时会进入此队列）。 这里 volatile 是核心关键词，具体 volatile 的语义，在此不述 。 state 的访问方式有三种： getState()、 setState() 以及 compareAndSetState()。
 
