@@ -84,7 +84,7 @@ Java 为了最小化减少内存泄露的可能性和影响，在 ThreadLocal �
 
 3. VisualVM: JDK 自带的图形化界面工具，主要用于对 JAVA 应用程序做性能分析和调优。
 
-![img4](https://raw.githubusercontent.com/ABUGADAY/midjavainterview/master/img/juc4.png)
+![img4](https://raw.githubusercontent.com/ABUGADAY/midjavainterview/master/img/juc4.jpg)
 
 ## 10.什么是 Java Timer 类？ 如何创建一个有特定时间间隔的任务？
 
