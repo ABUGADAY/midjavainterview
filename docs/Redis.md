@@ -166,3 +166,48 @@ EXEC
 
 ## 15. Redis的缓存失效策略和主键失效机制
 
+作为缓存系统都要定期清理无效数据，就需要一个逐主键失效和淘汰策略。
+
+在Redis当中，有生存期的key被成为volatile。在创建缓存时，要为给定的key设置生存期，当key过期的时候(生存期为0)，他可能会被删除。
+
+1. 影响生存时间的一些操作
+
+生存时间可以通过使用DEL命令来删除整个key来移除，或者被SET和GETSET命令覆盖原来的数据，也就是说，修改key对应的value和使用另外相同的key和value来覆盖以后，当前数据的生存时间不同。
+
+比如说，对一个key执行INCR命令，对一个列表进行LPUSH命令，或者对一个哈希表执行HSET命令，这类操作都不会修改key本身的生存时间。另一方面，如果使用RENAME对一个key进行改名，那么改名后的key的生存时间和改名前一样。
+
+RENAME命令的另一种可能是，尝试将一个带生存时间的key改名成另一个代生存时间的another_key，这时旧的another_key(以及它的生存时间)会被删除，然后旧的key会改名为another_key，因此，新的another_key的生存时间和也和原本的key一样。使用PERSIST命令可以在不删除key的情况下，移除key 的生存时间，让key重新成为一个persistent key。
+
+2. 如何更新生存时间
+
+可以对一个已经带有生存时间的key执行EXPIRE命令，新指定的生存时间会取代旧的生存时间。过期时间的精度已经被控制在1ms之内，逐渐失效的时间复杂度是O(1),
+
+EXOIRE和TTL命令搭配使用，TTL可以查看key的当前生存时间。设置成功返回1；当key不存在或者不能为key设置生存时间时，返回0。
+
+3. 最大缓存配置
+
+在Redis中，允许用户设置最大使用内存大小 server.maxmemory 默认为0，没有指定最大缓存的情况下如果有新的数据添加超过最大内存，则会使Redis崩溃，所以一定要设置。Redis内存数据集大小上升到一定大小的时候们就会实行数据淘汰策略。
+
+4. Redis提供的6种淘汰策略:
+
+- volatile-lru: 从已设置过期时间的数据集(server.db[i].expires)中挑选最近最少使用的数据淘汰
+- volatile-ttl: 从已设置过期时间的数据集(server.db[i].expires)中选择将要过期的数据淘汰
+- volatile-random: 从已设置过期时间的数据集(server.db[i].expires)中任意选择数据淘汰
+- allkeys-lru: 从数据集(server.db[i].dict)中挑选最近最少使用的数据淘汰
+- allkeys-random: 从数据集(server.db[i].dict)中任意选择数据淘汰
+- no-envictio(驱逐):禁止驱逐数据
+
+注意这里的6种机制，volatile和allkeys规定了是对已设置过期时间的数据集淘汰数据还是从全部数据集淘汰数据，后面的lru、ttl以及random是三种不同的淘汰策略，再加上一种no-enviction永不回收的策略。
+
+使用策略规则：
+
+1. 如果数据呈现幂律分布，也就是一部分数据访问频率高，另一部分数据访问频率低，则使用allkeys-lru
+
+2. 如果数据呈现平等分布，也就是所有的数据访问频率都相同，则使用allkeys-random
+
+   三种数据淘汰策略：
+
+   TTL和random比较容易理解，实现也会比较简单。主要时lru最近使用淘汰策略，设计上会对key按失效时间排序，然后取最先失效的key进行淘汰
+
+
+
