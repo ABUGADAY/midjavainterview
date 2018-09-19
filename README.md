@@ -2,7 +2,7 @@
 
 - [jvm](https://github.com/ABUGADAY/midjavainterview/blob/master/docs/JVM.md)
 - [mysql](https://www.jianshu.com/p/977a9e7d80b3)本人常年使用Oracle，学艺不精，故奉上外链
-- [redis缓存](https://github.com/ABUGADAY/midjavainterview/blob/master/docs/Redis.md)进行中
+- [redis缓存](https://github.com/ABUGADAY/midjavainterview/blob/master/docs/Redis.md)完成
 - [Java基础](https://yq.aliyun.com/articles/622609#java)多说无益，底层不会，浅显不精，奉上外链
 - [缓存]()未完成
 - [算法]()未完成
