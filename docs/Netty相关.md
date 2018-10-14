@@ -94,9 +94,45 @@
 - Netty中的使用：ProtobufVarint32FrameDecoder 是用于处理半包消息的解码类；ProtobufDecoder(UserProto.User.getDefaultInstance())这是创建的UserProto.java文件中的解码类；ProtobufVarint32LengthFieldPrepender 对protobuf协议的消息头上加上一个长度为32的整形字段，用于标志这个消息的长度的类；ProtobufEncoder 是编码类
 - 将StringBuilder转换为ByteBuf类型：copiedBuffer()方法
 
-...
+## 8.Netty的零拷贝实现
+
+- Netty的结束和发送ByteBuffer采用DIRECT BUFFERS，适用堆外直接内存进行Socket读写，不需要进行字节缓冲区的二次拷贝。堆内存多了一次内存拷贝，JVM会将堆内存Buffer拷贝一份到直接内存中，然后才写入Socket中。ByteBuffer由ChannelConfig分配，而ChannelConfig创建ButeBufAllocator，默认使用Direct Buffer
+- CompositeByteBuf类可以将多个Byte合并为一个逻辑上的ByteBuf，避免了传统通过内存拷贝的方式将几个小Buffer合并成一个大的Buffer。  addComponrnt方法将header与body合并成一个逻辑上的ByteBuf，这两个ByteBuf在CompositeByte内部都是单独存在的，CompositeByteBuf只是逻辑上的一个整体
+- 通过FileRegion包装的FileChannnel.tranferTo方法实现文件传输，可以直接将文件缓冲区的数据发送到目标Channel，避免了传统通过循环write方式导致的内存拷贝问题
+- 通过wrap方法，我们可以将byte[]数组、ByteBuf、ByteBuffer等包装成一个Netty ByteBuf对象，进而避免了拷贝操作
+- Selector BUG：若Selector的轮询结果为空，也没有wakeup或新消息处理，则发生空轮询，CPU使用率100%
+- Netty的解决办法：对Seletor的select操作周期进行统计，每完成一次空的select操作进行一次计数，若在某个周期内连续发生了N次空轮询，则触发了epoll死循环bug。重建Selector，判断是否其他线程发起的重建请求，若不是则将原SocketChannel从旧的Selector上去除注册，重新注册到新的Selector上，并将原来的Selector关闭
+
+## 9.Netty的高性能表现在那些方面
+
+- **心跳**，对服务端：会定时清楚闲置会话 inactive（netty5），对客户端：用来检测会话是否断开，是否重来，检测网络延迟，其中idleStateHandler类用来检测会话状态
+- **串行无锁化设计**，即消息的处理尽可能在同一个线程内完成，期间不进行线程切换，这样就必买年了多线程竞争和同步锁。表面上看，串行化设计似乎对CPU利用率不高，并发程度不够。但是，通过调整NIO线程池的线程参数，可以同时启动多个串行化的线程并发运行，这种局部无锁化的串行线程 设计相比一个队列-多个工作线程模型性能更优
+- **可靠性**，链路有效性检测：链路空闲检测机制，读/写空闲超时机制；内存保护机制：通过内存池重用ByteBuf；ByteBuf的解码保护；优雅停机：不再接收新消息、退出前的预处理操作、资源的释放操作。
+- **Netty安全性**：支持的安全协议SSL V2 和V3 ，TLS，SSL单向认证、双向认证和第三方CA认证
+- **高并发编程的体现**：volatile的大量、正确使用；CAS和原子类的广泛使用；线程安全容器的使用；通过读写锁提升并发性能。IO通信性能三原则：传输（AIO）、协议（HTTP）、线程（主从多线程）
+- **流量整型**的作用（变压器）：防止由于上下游元性能不均衡导致下游网元被压垮，业务流中断；防止由于通信模块接受消息过快，后端业务线程处理不及时导致撑死问题
+- **TCP**参数配置：SO_RCVBUF 和 SO_SNDBUF:通常建议值为128k或者256k；SO_TCPNODELAY：NAGLE算法通过将缓冲区内的小封包自动相连，组成较大的封包，阻止大量小封包的发送阻塞网络，从而提高网络应用效率。但是对于时延敏感的应用场景需要关闭该优化算法
+
+## 10.NIOEventLoopGroup源码
+
+![Netty1](/home/fengld/workSpace/midjavainterview/img/Netty1.png)
+
+
+
+- NioEventLoopGroup（其实是 MultithreadEventExecutorGroup）内部维护一个类型诶EventExecutor children[]，默认大小是处理核数*2,这样就构成了一个线程池，初始化EventExecutor时NioEventLoopGroup重载newChild方法，所以children元素的实际类型为NioEventLoop
+- 线程启动时调用SingleThreadEventExecutor的构造方法，执行NioEventLoop类的run方法，首先会调用hasTasks()方法判断当前taskQueue是否由元素。如果有，执行selectNow()方法，最终执行selector.selectNow()，该方法会立即返回。如果taskQueue没有元素，执行select(oldWakenUp)方法
+- select(oldWakeUp)方法解决了Nio中的bug，selectCnt用来记录selector.select方法执行此书和标识是否执行过selector.selectNow()，若触发了epoll的空轮询bug，则会反复执行selector.select(timeMillis)，变量selectCnt会逐渐鞭打，当selectCnt达到阈值（默认512），则执行rebuildSelector方法，进行selector重建，解决cpu占用100%的bug
+- rebuildSelector 方法先通过 openSelector 方法创建一个新的 selector。然后将 old selector 的 selectionKey 执行 cancel。最后将 old selector 的 channel 重新注册到新的 selector 中。rebuild 后，需要重新执行方法 selectNow，检查是否有已 ready 的 selectionKey。
+- 接下来调用 processSelectedKeys 方法（处理 I/O 任务），当 selectedKeys != null 时，调用 processSelectedKeysOptimized 方法，迭代 selectedKeys 获取就绪的 IO 事件的 selectkey 存放在数组 selectedKeys 中, 然后为每个事件都调用 processSelectedKey 来处理它，processSelectedKey 中分别处理 OP_READ；OP_WRITE；OP_CONNECT 事件。
+- 最后调用 runAllTasks 方法（非 IO 任务），该方法首先会调用 fetchFromScheduledTaskQueue 方法，把 scheduledTaskQueue 中已经超过延迟执行时间的任务移到 taskQueue 中等待被执行，然后依次从 taskQueue 中取任务执行，每执行 64 个任务，进行耗时检查，如果已执行时间超过预先设定的执行时间，则停止执行非 IO 任务，避免非 IO 任务太多，影响 IO 任务的执行。
+- 每个 NioEventLoop 对应一个线程和一个 Selector，NioServerSocketChannel 会主动注册到某一个 NioEventLoop 的 Selector 上，NioEventLoop 负责事件轮询。
+- Outbound 事件都是请求事件, 发起者是 Channel，处理者是 unsafe，通过 Outbound 事件进行通知，传播方向是 tail 到 head。Inbound 事件发起者是 unsafe，事件的处理者是 Channel, 是通知事件，传播方向是从头到尾。
+- 内存管理机制，首先会预申请一大块内存 Arena，Arena 由许多 Chunk 组成，而每个 Chunk 默认由 2048 个 page 组成。Chunk 通过 AVL 树的形式组织 Page，每个叶子节点表示一个 Page，而中间节点表示内存区域，节点自己记录它在整个 Arena 中的偏移地址。当区域被分配出去后，中间节点上的标记位会被标记，这样就表示这个中间节点以下的所有节点都已被分配了。大于 8k 的内存分配在 poolChunkList 中，而 PoolSubpage 用于分配小于 8k 的内存，它会把一个 page 分割成多段，进行内存分配。
+- ByteBuf 的特点：支持自动扩容（4M），保证 put 方法不会抛出异常、通过内置的复合缓冲类型，实现零拷贝（zero-copy）；不需要调用 flip() 来切换读 / 写模式，读取和写入索引分开；方法链；引用计数基于 AtomicIntegerFieldUpdater 用于内存回收；PooledByteBuf 采用二叉树来实现一个内存池，集中管理内存的分配和释放，不用每次使用都新建一个缓冲区对象。UnpooledHeapByteBuf 每次都会新建一个缓冲区对象。
 
 
 
 
+
+> 来源 https://blog.csdn.net/baiye_xing/article/details/76735113
 
