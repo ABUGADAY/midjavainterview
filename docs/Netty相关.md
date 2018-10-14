@@ -115,9 +115,7 @@
 
 ## 10.NIOEventLoopGroup源码
 
-![Netty1](/home/fengld/workSpace/midjavainterview/img/Netty1.png)
-
-
+![Netty1](https://github.com/ABUGADAY/midjavainterview/blob/master/img/Netty1.png)
 
 - NioEventLoopGroup（其实是 MultithreadEventExecutorGroup）内部维护一个类型诶EventExecutor children[]，默认大小是处理核数*2,这样就构成了一个线程池，初始化EventExecutor时NioEventLoopGroup重载newChild方法，所以children元素的实际类型为NioEventLoop
 - 线程启动时调用SingleThreadEventExecutor的构造方法，执行NioEventLoop类的run方法，首先会调用hasTasks()方法判断当前taskQueue是否由元素。如果有，执行selectNow()方法，最终执行selector.selectNow()，该方法会立即返回。如果taskQueue没有元素，执行select(oldWakenUp)方法
